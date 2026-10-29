@@ -1,0 +1,22 @@
+# virtualenv
+.venv/
+venv/
+
+# python
+__pycache__/
+*.pyc
+
+# pretrained models (download_models.py fetches them, 55 MB)
+models/*
+!models/.gitkeep
+
+# personal + runtime data: biometric thresholds, session database,
+# generated siren, notification log. None of this belongs in a repo.
+data/*
+!data/.gitkeep
+
+# large demo recordings
+docs/*.mp4
+docs/*.mov
+
+.DS_Store
