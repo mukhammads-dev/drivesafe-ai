@@ -189,6 +189,26 @@ tests/            logic tests, no camera required
   it is good for relative change, not absolute angles.
 - This is an assistive tool. It does not transfer responsibility away from the driver.
 
+## Future work
+
+Deliberately not built, so the project stays small and stays pure OpenCV —
+but these are the next things a real deployment would need:
+
+- **Adaptive baseline.** A one-time calibration drifts over a long shift as
+  light and posture change. The fix is to keep updating the open-eye baseline,
+  but only from frames the system already judges alert — otherwise it adapts to
+  the drowsiness it is meant to catch.
+- **Driver identity.** Thresholds are per person, but nothing checks who is in
+  front of the camera. A shift-start card or login is the right answer here, not
+  face recognition: the system needs a profile, not an identity.
+- **Tamper detection.** A photo taped over the lens never blinks, so PERCLOS
+  stays at zero and the system reports calm forever. Two minutes with no blink
+  and no pixel movement is not a calm driver — it is a defeated sensor.
+- **Hardware alerts.** Seat or steering-wheel vibration through the CAN bus
+  wakes a driver far more reliably than sound.
+- **IR camera.** A plain webcam is unreliable at night, which is when fatigue
+  peaks.
+
 ## Privacy
 
 No video and no images are written to disk. The database stores timestamps,
