@@ -50,6 +50,10 @@ MICROSLEEP_SECONDS = 1.5   # eyes continuously closed this long -> immediate ala
 YAWN_MIN_SECONDS = 0.8     # mouth open at least this long (so talking does not count)
 YAWN_WINDOW = 300.0        # seconds; yawns are counted over the last 5 minutes
 YAWN_CAUTION_COUNT = 2
+# A yawn squeezes the eyes shut for a second or two. That is not drowsiness,
+# and counting it fakes a microsleep and inflates PERCLOS, so eye closure is
+# ignored while the mouth is wide open and for a moment afterwards.
+YAWN_EYE_GRACE = 1.5
 
 # --- Head nod --------------------------------------------------------------
 NOD_PITCH_DROP = 12.0      # degrees below the person's natural pitch
@@ -73,7 +77,10 @@ STABLE_FRAMES = 5          # a state must hold this many frames before it counts
 # --- Escalation ------------------------------------------------------------
 # A beep that stops by itself teaches the driver that silence means safe, so
 # a CRITICAL alarm keeps sounding until they prove they are awake.
-ACK_EYES_OPEN = 3.0        # seconds of open eyes that count as "I am awake"
+ACK_EYES_OPEN = 3.0        # window of open eyes that counts as "I am awake"
+# Not an unbroken streak: an awake person blinks every few seconds, so
+# requiring zero blinks made the alarm impossible to acknowledge.
+ACK_OPEN_RATIO = 0.8
 NO_RESPONSE_SECONDS = 5.0  # no acknowledgement this long -> tell the dispatcher
 
 # Where the dispatcher alert goes. Empty = local log only, which is enough

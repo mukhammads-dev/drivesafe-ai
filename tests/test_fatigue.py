@@ -98,6 +98,33 @@ def main():
     failures += not check("talking (short mouth movements) is not a yawn",
                           r.yawn_count == 0, f"{r.yawn_count}")
 
+    print("\nYawning does not fake a microsleep")
+    m = FatigueMonitor(make_profile())
+    r = run(m, 1.9, lambda s: CLOSED, mar_fn=lambda s: OPEN_MOUTH)
+    failures += not check("eyes shut during a yawn is not a microsleep",
+                          not r.microsleep, f"closed_for {r.closed_for:.1f}s")
+    failures += not check("the yawn itself is still counted", r.yawn_count == 1, f"{r.yawn_count}")
+
+    # a yawn every 10 s, eyes shut through each one
+    m = FatigueMonitor(make_profile())
+    r = run(m, 70,
+            lambda s: CLOSED if (s % 10.0) < 2.0 else OPEN,
+            mar_fn=lambda s: OPEN_MOUTH if (s % 10.0) < 2.0 else RESTING_MOUTH)
+    failures += not check("repeated yawns do not inflate PERCLOS",
+                          r.perclos < config.PERCLOS_CAUTION, f"PERCLOS {r.perclos:.1f}%")
+
+    print("\nAcknowledging while blinking normally")
+    m = FatigueMonitor(make_profile())
+    run(m, 2.0, lambda s: CLOSED, t0=1000.0)                 # microsleep
+    run(m, 4.0, blinking(), t0=1002.0)                       # awake again
+    ratio = m.open_ratio(config.ACK_EYES_OPEN, now=1006.0)
+    failures += not check("an awake, blinking driver can dismiss the alarm",
+                          ratio >= config.ACK_OPEN_RATIO, f"open {ratio * 100:.0f}% of 3 s")
+    m2 = FatigueMonitor(make_profile())
+    run(m2, 4.0, lambda s: CLOSED, t0=2000.0)
+    failures += not check("a driver with shut eyes cannot",
+                          m2.open_ratio(config.ACK_EYES_OPEN, now=2004.0) < config.ACK_OPEN_RATIO)
+
     print("\nHead nod")
     m = FatigueMonitor(make_profile())
     r = run(m, 3.0, lambda s: OPEN, pitch_fn=lambda s: -20.0 if s < 1.0 else 0.0)

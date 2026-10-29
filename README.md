@@ -21,6 +21,7 @@ says so when it cannot see properly, and writes a session report at the end.
 | **Admits blindness** | Face lost, too dark, half occluded → it reports `monitoring: poor` instead of a confident wrong answer. |
 | **Shows eyes only** | The window displays a crop of the eye region — never the whole face, and no video is ever stored. |
 | **Microsleep is separate** | Eyes shut ≥ 1.5 s alarms immediately, bypassing window and cooldown. |
+| **A yawn is not a microsleep** | Yawning squeezes the eyes shut for a second or two. Those frames are excluded, so a yawn no longer fakes an emergency or inflates PERCLOS. |
 
 ## How it works
 
@@ -77,8 +78,11 @@ systems answer this with a ladder, and so does DriveSafe.
 | 4 · No reply | 5 s with no acknowledgement | The driver is probably asleep: the alert leaves the cabin and goes to the **dispatcher** (webhook + local log) |
 
 Step 3 is the one that matters. The siren stops only when the driver proves they
-are awake — pressing `SPACE`, or holding their eyes open for three seconds. An
-alarm that silences itself teaches the driver that silence means safe.
+are awake — pressing `SPACE`, or being visibly awake: eyes open for at least
+80 % of the last three seconds. A ratio, not an unbroken streak, because an
+alert driver blinks every few seconds and demanding zero blinks made the alarm
+impossible to dismiss. An alarm that silences itself teaches the driver that
+silence means safe.
 
 Step 4 reflects how fleets actually work: the intervention that reliably helps is
 not a louder noise, it is a human being phoning the driver.
@@ -138,6 +142,11 @@ Yawning
 Alerting
   [PASS] cooldown keeps 70 s of drowsiness to a few alerts  -> 1 alert
   [PASS] 70 s of normal blinking fires nothing              -> 0 alerts
+Yawning does not fake a microsleep
+  [PASS] eyes shut during a yawn is not a microsleep
+  [PASS] repeated yawns do not inflate PERCLOS
+Acknowledging while blinking normally
+  [PASS] an awake, blinking driver can dismiss the alarm   -> open 100% of 3 s
 Escalation ladder
   [PASS] a microsleep arms the siren and waits for a reply
   [PASS] no reply for 5 s escalates to the dispatcher

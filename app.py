@@ -64,7 +64,6 @@ def main():
     history = deque(maxlen=HISTORY_SECONDS)
     last_history_push = 0.0
     last_reading = Reading()
-    eyes_open_since = None          # used to let the driver acknowledge by staying awake
     fps, last_t = 0.0, time.time()
 
     if profile:
@@ -130,20 +129,17 @@ def main():
                         sess.event(level, last_reading, alerts.message, now)
                         print(f"[{time.strftime('%H:%M:%S')}] {level}: {alerts.message}")
 
-                    # Acknowledge by staying awake: eyes open without a break.
-                    if last_reading.eyes_closed:
-                        eyes_open_since = None
-                    elif eyes_open_since is None:
-                        eyes_open_since = now
-                    if (alerts.awaiting_ack and eyes_open_since is not None
-                            and now - eyes_open_since >= config.ACK_EYES_OPEN):
+                    # Acknowledge by being visibly awake: eyes open for most
+                    # of the last few seconds (blinking is allowed).
+                    if (alerts.awaiting_ack and not last_reading.eyes_closed
+                            and monitor.open_ratio(config.ACK_EYES_OPEN, now)
+                            >= config.ACK_OPEN_RATIO):
                         if alerts.acknowledge("eyes open"):
                             sess.event("ACK", last_reading, "acknowledged by eyes open", now)
                             print(f"[{time.strftime('%H:%M:%S')}] acknowledged (eyes open)")
                 else:
                     # No face: do not guess. The quality meter says why.
                     level = alerts.level
-                    eyes_open_since = None
 
                 if now - last_history_push >= 1.0:
                     last_history_push = now

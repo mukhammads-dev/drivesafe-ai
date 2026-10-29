@@ -53,12 +53,26 @@ class FatigueMonitor:
         self._mouth_open_since = None
         self._nod_since = None
         self._blink_ready = False
+        self._yawn_grace_until = 0.0
 
     # -- helpers ------------------------------------------------------------
     @staticmethod
     def _trim(dq, now, span):
         while dq and now - (dq[0][0] if isinstance(dq[0], tuple) else dq[0]) > span:
             dq.popleft()
+
+    def open_ratio(self, seconds: float, now: float = None) -> float:
+        """Share of the last `seconds` with the eyes open.
+
+        Used to let the driver dismiss an alarm by being visibly awake. A
+        ratio, not an unbroken streak: an alert person blinks every few
+        seconds, and demanding zero blinks made the alarm undismissable.
+        """
+        now = now or time.time()
+        recent = [c for t, c in self._closed_window if now - t <= seconds]
+        if len(recent) < 5:
+            return 0.0
+        return sum(1 for c in recent if not c) / len(recent)
 
     # -- main ---------------------------------------------------------------
     def update(self, ear: float, mar: float, pitch: float, now: float = None) -> Reading:
@@ -77,8 +91,28 @@ class FatigueMonitor:
         # session opens with "you are blinking too little".
         self._blink_ready = elapsed >= 60.0
 
+        # --- mouth FIRST --------------------------------------------------
+        # The eye logic below needs to know whether a yawn is in progress.
+        yawn_now = mar >= self.p.yawn_mar
+        if yawn_now:
+            if self._mouth_open_since is None:
+                self._mouth_open_since = now
+            elif now - self._mouth_open_since >= config.YAWN_MIN_SECONDS:
+                # count once per opening, not once per frame
+                if not self._yawns or now - self._yawns[-1] > config.YAWN_MIN_SECONDS * 2:
+                    self._yawns.append(now)
+                r.yawning = True
+            self._yawn_grace_until = now + config.YAWN_EYE_GRACE
+        else:
+            self._mouth_open_since = None
+
+        self._trim(self._yawns, now, config.YAWN_WINDOW)
+        r.yawn_count = len(self._yawns)
+        in_yawn = now < self._yawn_grace_until
+
         # --- eyes ---------------------------------------------------------
-        closed = ear < self.p.closed_ear
+        # Eyes shut during a yawn are not drowsiness.
+        closed = (ear < self.p.closed_ear) and not in_yawn
         self._closed_window.append((now, closed))
         self._trim(self._closed_window, now, config.PERCLOS_WINDOW)
 
@@ -103,21 +137,6 @@ class FatigueMonitor:
 
         self._trim(self._blinks, now, 60.0)
         r.blink_rate = float(len(self._blinks))
-
-        # --- yawning ------------------------------------------------------
-        if mar >= self.p.yawn_mar:
-            if self._mouth_open_since is None:
-                self._mouth_open_since = now
-            elif now - self._mouth_open_since >= config.YAWN_MIN_SECONDS:
-                # count once per opening, not once per frame
-                if not self._yawns or now - self._yawns[-1] > config.YAWN_MIN_SECONDS * 2:
-                    self._yawns.append(now)
-                r.yawning = True
-        else:
-            self._mouth_open_since = None
-
-        self._trim(self._yawns, now, config.YAWN_WINDOW)
-        r.yawn_count = len(self._yawns)
 
         # --- head nod -----------------------------------------------------
         r.pitch = pitch
